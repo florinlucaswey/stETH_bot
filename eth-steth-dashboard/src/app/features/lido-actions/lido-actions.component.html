@@ -1,0 +1,148 @@
+<div class="mx-auto max-w-6xl px-6 pb-16">
+  <header class="mt-4">
+    <p class="text-xs uppercase tracking-[0.3em] text-sky-600">Lido Actions</p>
+    <h1 class="text-3xl font-semibold text-slate-900">Stake and Withdraw stETH</h1>
+    <p class="mt-2 max-w-2xl text-sm text-slate-500">
+      Trades run from the bot wallet only. This page submits stake and withdrawal actions to
+      the backend.
+    </p>
+  </header>
+
+  <div class="mt-6 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="text-sm text-slate-600">
+        <span class="font-semibold text-slate-900">Bot address:</span>
+        <span>{{ formatAddress(status()?.botAddress ?? null) }}</span>
+      </div>
+      <button
+        type="button"
+        class="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600"
+        (click)="refreshStatus()"
+      >
+        Refresh
+      </button>
+    </div>
+
+    <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <p class="text-xs uppercase text-slate-500">ETH balance</p>
+        <p class="mt-2 text-lg font-semibold text-slate-900">
+          {{ status()?.ethBalance ?? '-' }}
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <p class="text-xs uppercase text-slate-500">stETH balance</p>
+        <p class="mt-2 text-lg font-semibold text-slate-900">
+          {{ status()?.stethBalance ?? '-' }}
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <p class="text-xs uppercase text-slate-500">Pending withdrawals</p>
+        <p class="mt-2 text-lg font-semibold text-slate-900">
+          {{ status()?.pendingWithdrawals?.length ?? 0 }}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">
+          {{ formatRequestList(status()?.pendingWithdrawals ?? []) }}
+        </p>
+      </div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50 p-4">
+        <p class="text-xs uppercase text-slate-500">Ready to claim</p>
+        <p class="mt-2 text-lg font-semibold text-slate-900">
+          {{ status()?.readyToClaim?.length ?? 0 }}
+        </p>
+        <p class="mt-2 text-xs text-slate-500">
+          {{ formatRequestList(status()?.readyToClaim ?? []) }}
+        </p>
+      </div>
+    </div>
+
+    <div
+      *ngIf="loading()"
+      class="mt-4 rounded-xl border border-dashed border-slate-200 bg-white/60 p-4 text-sm text-slate-500"
+    >
+      Loading status...
+    </div>
+    <div
+      *ngIf="error()"
+      class="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"
+    >
+      {{ error() }}
+    </div>
+  </div>
+
+  <div class="mt-8 grid gap-6 lg:grid-cols-3">
+    <div class="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+      <h2 class="text-lg font-semibold text-slate-900">Stake ETH → stETH</h2>
+      <form class="mt-4 flex flex-col gap-3" [formGroup]="stakeForm" (ngSubmit)="stake()">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Amount (ETH)
+          <input
+            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+            type="text"
+            formControlName="amountEth"
+            placeholder="0.1"
+          />
+        </label>
+        <button
+          class="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white"
+          type="submit"
+          [disabled]="stakePending()"
+        >
+          {{ stakePending() ? 'Submitting...' : 'Stake ETH' }}
+        </button>
+      </form>
+      <p *ngIf="stakeError()" class="mt-3 text-sm text-rose-600">{{ stakeError() }}</p>
+      <p *ngIf="stakeSuccess()" class="mt-3 text-sm text-emerald-700">{{ stakeSuccess() }}</p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+      <h2 class="text-lg font-semibold text-slate-900">Request stETH Withdrawal</h2>
+      <form class="mt-4 flex flex-col gap-3" [formGroup]="withdrawForm" (ngSubmit)="requestWithdraw()">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Amount (stETH)
+          <input
+            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+            type="text"
+            formControlName="amountSteth"
+            placeholder="0.1"
+          />
+        </label>
+        <button
+          class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+          type="submit"
+          [disabled]="withdrawPending()"
+        >
+          {{ withdrawPending() ? 'Submitting...' : 'Request Withdrawal' }}
+        </button>
+      </form>
+      <p *ngIf="withdrawError()" class="mt-3 text-sm text-rose-600">{{ withdrawError() }}</p>
+      <p *ngIf="withdrawSuccess()" class="mt-3 text-sm text-emerald-700">
+        {{ withdrawSuccess() }}
+      </p>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+      <h2 class="text-lg font-semibold text-slate-900">Claim Withdrawals</h2>
+      <form class="mt-4 flex flex-col gap-3" [formGroup]="claimForm" (ngSubmit)="claimWithdrawals()">
+        <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Request IDs (comma-separated)
+          <input
+            class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+            type="text"
+            formControlName="requestIds"
+            placeholder="12345, 12346"
+          />
+        </label>
+        <button
+          class="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white"
+          type="submit"
+          [disabled]="claimPending()"
+        >
+          {{ claimPending() ? 'Submitting...' : 'Claim Ready' }}
+        </button>
+      </form>
+      <p *ngIf="claimError()" class="mt-3 text-sm text-rose-600">{{ claimError() }}</p>
+      <p *ngIf="claimSuccess()" class="mt-3 text-sm text-emerald-700">{{ claimSuccess() }}</p>
+    </div>
+  </div>
+</div>

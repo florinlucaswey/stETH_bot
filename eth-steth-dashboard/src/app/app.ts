@@ -1,25 +1,13 @@
-﻿import { Component, OnInit } from '@angular/core';
-import { EthService } from './services/eth.service';
-import { ethers } from 'ethers';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  template: `
-    <div>
-      <h1>ETH ↔ stETH bot</h1>
-      <p>ETH balance: {{ ethBalance }}</p>
-    </div>
-  `
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  templateUrl: './app.html',
+  styleUrls: ['./app.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppComponent implements OnInit {
-  ethBalance: string = '-';
-
-  constructor(private ethService: EthService) {}
-
-  async ngOnInit() {
-    const wallet = this.ethService.getWallet();
-    const balance = await wallet.getBalance();
-    this.ethBalance = ethers.formatEther(balance);
-  }
-}
+export class AppComponent {}

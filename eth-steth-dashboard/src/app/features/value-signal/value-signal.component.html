@@ -1,0 +1,171 @@
+<div class="mx-auto max-w-6xl px-6 pb-16">
+  <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-xs uppercase tracking-[0.3em] text-sky-600">Value Signal</p>
+      <h1 class="text-3xl font-semibold text-slate-900">Value Investing Signal</h1>
+      <p class="mt-2 max-w-2xl text-sm text-slate-500">
+        Track the stETH discount versus ETH alongside Lido APR and the waiting time hurdle.
+      </p>
+    </div>
+  </div>
+
+  <ng-container *ngIf="state$ | async as state">
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <p class="text-xs uppercase text-slate-500">Current discount</p>
+        <ng-container *ngIf="state.status === 'ready'; else discountLoading">
+          <p class="mt-2 text-2xl font-semibold text-slate-900">
+            {{ formatPercent(state.series.summary.discountPct) }}
+          </p>
+        </ng-container>
+        <ng-template #discountLoading>
+          <div class="mt-3 h-6 w-24 animate-pulse rounded bg-slate-200"></div>
+        </ng-template>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <p class="text-xs uppercase text-slate-500">Current APR</p>
+        <ng-container *ngIf="state.status === 'ready'; else aprLoading">
+          <p class="mt-2 text-2xl font-semibold text-slate-900">
+            {{ formatPercent(state.series.summary.aprPct) }}
+          </p>
+        </ng-container>
+        <ng-template #aprLoading>
+          <div class="mt-3 h-6 w-24 animate-pulse rounded bg-slate-200"></div>
+        </ng-template>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <p class="text-xs uppercase text-slate-500">Current hurdle</p>
+        <ng-container *ngIf="state.status === 'ready'; else hurdleLoading">
+          <p class="mt-2 text-2xl font-semibold text-slate-900">
+            {{ formatPercent(state.series.summary.hurdlePct) }}
+          </p>
+        </ng-container>
+        <ng-template #hurdleLoading>
+          <div class="mt-3 h-6 w-24 animate-pulse rounded bg-slate-200"></div>
+        </ng-template>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <p class="text-xs uppercase text-slate-500">Value signal</p>
+        <ng-container *ngIf="state.status === 'ready'; else signalLoading">
+          <p class="mt-2 text-2xl font-semibold text-slate-900">
+            {{ formatPercent(state.series.summary.valueSignal) }}
+          </p>
+        </ng-container>
+        <ng-template #signalLoading>
+          <div class="mt-3 h-6 w-24 animate-pulse rounded bg-slate-200"></div>
+        </ng-template>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <p class="text-xs uppercase text-slate-500">In Value Zone?</p>
+        <ng-container *ngIf="state.status === 'ready'; else zoneLoading">
+          <span
+            class="mt-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+            [class.bg-emerald-100]="state.series.summary.inValueZone"
+            [class.text-emerald-700]="state.series.summary.inValueZone"
+            [class.bg-rose-100]="!state.series.summary.inValueZone"
+            [class.text-rose-700]="!state.series.summary.inValueZone"
+          >
+            {{ state.series.summary.inValueZone ? 'Yes' : 'No' }}
+          </span>
+        </ng-container>
+        <ng-template #zoneLoading>
+          <div class="mt-3 h-6 w-16 animate-pulse rounded bg-slate-200"></div>
+        </ng-template>
+      </div>
+    </div>
+
+    <div class="mt-6 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-sm">
+      <form class="flex flex-col gap-4" [formGroup]="filters">
+        <div class="flex flex-wrap items-end gap-4">
+          <label class="flex flex-col text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Range
+            <select
+              class="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+              formControlName="range"
+            >
+              <option *ngFor="let option of rangeOptions" [value]="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+
+          <ng-container *ngIf="filters.controls.range.value === 'custom'">
+            <label class="flex flex-col text-xs font-semibold uppercase tracking-wide text-slate-500">
+              From
+              <input
+                class="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+                type="date"
+                formControlName="from"
+              />
+            </label>
+            <label class="flex flex-col text-xs font-semibold uppercase tracking-wide text-slate-500">
+              To
+              <input
+                class="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+                type="date"
+                formControlName="to"
+              />
+            </label>
+          </ng-container>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-4">
+          <label class="flex flex-col text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Risk premium (%)
+            <input
+              class="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+              type="number"
+              step="0.1"
+              min="0"
+              formControlName="riskPremiumPct"
+            />
+          </label>
+          <label class="flex flex-col text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Waiting days
+            <input
+              class="mt-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+              type="number"
+              step="1"
+              min="0"
+              formControlName="waitingTimeDays"
+            />
+          </label>
+          <label class="mt-4 flex items-center gap-2 text-sm text-slate-600">
+            <input
+              class="h-4 w-4 rounded border-slate-300 text-emerald-600"
+              type="checkbox"
+              formControlName="includeWaitingTimeCost"
+            />
+            Include waiting time cost
+          </label>
+        </div>
+      </form>
+
+      <div class="chart-wrapper mt-6">
+        <canvas #chartCanvas></canvas>
+        <div
+          *ngIf="state.status === 'loading'"
+          class="absolute inset-0 flex items-center justify-center rounded-3xl bg-white/70 backdrop-blur"
+        >
+          <div class="text-sm font-semibold text-slate-500">Loading series...</div>
+        </div>
+        <div
+          *ngIf="state.status === 'error'"
+          class="absolute inset-0 flex items-center justify-center rounded-3xl bg-rose-50/80"
+        >
+          <div class="text-sm font-semibold text-rose-700">{{ state.message }}</div>
+        </div>
+        <div
+          *ngIf="state.status === 'empty'"
+          class="absolute inset-0 flex items-center justify-center rounded-3xl bg-white/70"
+        >
+          <div class="text-sm font-semibold text-slate-500">No data in this range.</div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>
