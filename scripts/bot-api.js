@@ -8,8 +8,14 @@ const { LidoService } = require('../src/services/lido-service');
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const WITHDRAWALS_PATH = path.join(DATA_DIR, 'withdrawals.json');
+const PRICE_HISTORY_PATH = path.join(DATA_DIR, 'price-history.json');
+const STRATEGY_STATE_PATH = path.join(DATA_DIR, 'strategy-state.json');
 const ABI_DIR = path.resolve(process.cwd(), 'src', 'abi');
 const CONFIG_PATH = path.resolve(process.cwd(), 'src', 'config', 'lido.json');
+const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+
+const Q192 = 2n ** 192n;
+const ONE_X18 = 1_000_000_000_000_000_000n;
 
 function loadEnv(envPath) {
   if (!fs.existsSync(envPath)) {
@@ -58,11 +64,12 @@ function readJsonFile(filePath, fallback) {
   }
 
   const raw = fs.readFileSync(filePath, 'utf8');
-  if (!raw.trim()) {
+  const cleaned = raw.replace(/^\uFEFF/, '').trim();
+  if (!cleaned) {
     return fallback;
   }
 
-  return JSON.parse(raw);
+  return JSON.parse(cleaned);
 }
 
 function writeJsonFile(filePath, data) {
@@ -100,6 +107,29 @@ function saveWithdrawals(data) {
   writeJsonFile(WITHDRAWALS_PATH, data);
 }
 
+function loadPriceHistory() {
+  ensureDataDir();
+  const data = readJsonFile(PRICE_HISTORY_PATH, { points: [] });
+  if (!data || !Array.isArray(data.points)) {
+    return { points: [] };
+  }
+  return data;
+}
+
+function savePriceHistory(data) {
+  ensureDataDir();
+  writeJsonFile(PRICE_HISTORY_PATH, data);
+}
+
+function loadStrategyState() {
+  ensureDataDir();
+  const state = readJsonFile(STRATEGY_STATE_PATH, null);
+  if (!state || typeof state !== 'object') {
+    return {};
+  }
+  return state;
+}
+
 function normalizeAmount(value, label) {
   if (typeof value !== 'string' && typeof value !== 'number') {
     throw new Error(`${label} must be a string or number.`);
@@ -113,6 +143,60 @@ function normalizeAmount(value, label) {
     throw new Error(`${label} must be greater than 0.`);
   }
   return normalized;
+}
+
+function getBotSettings() {
+  const cooldownMinutes = Number(process.env.COOLDOWN_MINUTES ?? '60');
+  const minHoldHours = Number(process.env.MIN_HOLD_HOURS ?? '24');
+  return {
+    cooldownMinutes: Number.isFinite(cooldownMinutes) ? cooldownMinutes : 60,
+    minHoldHours: Number.isFinite(minHoldHours) ? minHoldHours : 24,
+    minTradeEth: process.env.MIN_TRADE_ETH ?? '0.01',
+    minTradeSteth: process.env.MIN_TRADE_STETH ?? '0.01',
+    loopSeconds: Number(process.env.LOOP_SECONDS ?? '60')
+  };
+}
+
+function appendPriceHistory(point) {
+  const history = loadPriceHistory();
+  history.points.push(point);
+  const maxPoints = Number(process.env.PRICE_HISTORY_LIMIT ?? '2000');
+  if (Number.isFinite(maxPoints) && maxPoints > 0 && history.points.length > maxPoints) {
+    history.points = history.points.slice(history.points.length - maxPoints);
+  }
+  savePriceHistory(history);
+}
+
+async function getStethEthPrice(pool, stethAddress) {
+  const [token0, token1, slot0] = await Promise.all([
+    pool.token0(),
+    pool.token1(),
+    pool.slot0()
+  ]);
+
+  const sqrtPriceX96 = slot0.sqrtPriceX96 ?? slot0[0];
+  const priceToken1PerToken0X18 = (sqrtPriceX96 * sqrtPriceX96 * ONE_X18) / Q192;
+
+  const token0Lower = token0.toLowerCase();
+  const token1Lower = token1.toLowerCase();
+  const stethLower = stethAddress.toLowerCase();
+  const wethLower = WETH_ADDRESS.toLowerCase();
+
+  let priceRatioX18;
+  if (token0Lower === stethLower && token1Lower === wethLower) {
+    priceRatioX18 = priceToken1PerToken0X18;
+  } else if (token0Lower === wethLower && token1Lower === stethLower) {
+    priceRatioX18 = (ONE_X18 * ONE_X18) / priceToken1PerToken0X18;
+  } else {
+    throw new Error('Pool tokens do not match stETH/WETH.');
+  }
+
+  const priceRatio = Number(priceRatioX18) / 1e18;
+  return {
+    priceRatio,
+    discountPct: (1 - priceRatio) * 100,
+    premiumPct: (priceRatio - 1) * 100
+  };
 }
 
 async function refreshWithdrawalStatuses(lido, store) {
@@ -187,6 +271,7 @@ async function main() {
   const stethAbi = loadAbiFile('steth.json');
   const erc20Abi = loadAbiFile('erc20.json');
   const withdrawalQueueAbi = loadAbiFile('withdrawal-queue.json');
+  const poolAbi = loadAbiFile('uniswap-v3-pool.json');
   const lido = new LidoService({
     provider,
     wallet,
@@ -196,6 +281,7 @@ async function main() {
     erc20Abi,
     withdrawalQueueAbi
   });
+  const pool = new ethers.Contract(config.stethWethPoolAddress, poolAbi, provider);
 
   const app = express();
   const corsOrigin = process.env.CORS_ORIGIN ?? '*';
@@ -216,14 +302,44 @@ async function main() {
 
       const store = await refreshWithdrawalStatuses(lido, loadWithdrawals());
       const { pending, ready } = summarizeWithdrawals(store);
+      const strategyState = loadStrategyState();
 
       res.json({
         botAddress: lido.getAddress(),
         ethBalance: ethers.formatEther(ethBalance),
         stethBalance: ethers.formatEther(stethBalance),
         pendingWithdrawals: pending,
-        readyToClaim: ready
+        readyToClaim: ready,
+        config: getBotSettings(),
+        serverTime: new Date().toISOString(),
+        lastTick: strategyState.lastTick ?? null,
+        lastAction: strategyState.lastAction ?? null
       });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.get('/api/price/steth-eth', async (_req, res) => {
+    try {
+      const timestamp = new Date().toISOString();
+      const price = await getStethEthPrice(pool, config.stethAddress);
+      const response = { ...price, timestamp };
+      appendPriceHistory(response);
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.get('/api/price/steth-eth/history', (_req, res) => {
+    try {
+      const history = loadPriceHistory();
+      res.json(history.points);
     } catch (error) {
       res.status(500).json({
         error: error instanceof Error ? error.message : String(error)

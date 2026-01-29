@@ -14,6 +14,19 @@ export type BotStatus = {
   stethBalance: string;
   pendingWithdrawals: WithdrawalRequestInfo[];
   readyToClaim: WithdrawalRequestInfo[];
+  config?: {
+    cooldownMinutes: number;
+    minTradeEth: string;
+    minTradeSteth: string;
+    minHoldHours: number;
+    loopSeconds: number;
+  };
+  serverTime?: string;
+  lastTick?: string | null;
+  lastAction?: {
+    type: 'stake' | 'withdraw';
+    timestamp: string;
+  } | null;
 };
 
 export type StakeResponse = {
@@ -27,6 +40,13 @@ export type WithdrawRequestResponse = {
 
 export type WithdrawClaimResponse = {
   txHash: string;
+};
+
+export type PriceResponse = {
+  priceRatio: number;
+  discountPct: number;
+  premiumPct: number;
+  timestamp: string;
 };
 
 type ApiGlobals = {
@@ -62,5 +82,13 @@ export class ApiClientService {
     return this.http.post<WithdrawClaimResponse>(`${this.baseUrl}/api/lido/withdraw/claim`, {
       requestIds
     });
+  }
+
+  getStethEthPrice(): Observable<PriceResponse> {
+    return this.http.get<PriceResponse>(`${this.baseUrl}/api/price/steth-eth`);
+  }
+
+  getStethEthPriceHistory(): Observable<PriceResponse[]> {
+    return this.http.get<PriceResponse[]>(`${this.baseUrl}/api/price/steth-eth/history`);
   }
 }

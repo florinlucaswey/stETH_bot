@@ -69,7 +69,8 @@ export class StrategyRunner {
     ]);
 
     const state = this.storage.loadState();
-    const updatedState = this.updateConsecutive(state, discountPct, premiumPct);
+    const nowIso = new Date().toISOString();
+    const updatedState = this.updateConsecutive(state, discountPct, premiumPct, nowIso);
     this.storage.saveState(updatedState);
 
     logEvent('tick', {
@@ -99,12 +100,13 @@ export class StrategyRunner {
   private updateConsecutive(
     state: ReturnType<StorageService['loadState']>,
     discountPct: number,
-    premiumPct: number
+    premiumPct: number,
+    lastTick: string
   ) {
     const threshold = this.config.thresholdPct;
     const discount = discountPct > threshold ? state.consecutive.discount + 1 : 0;
     const premium = premiumPct > threshold ? state.consecutive.premium + 1 : 0;
-    return { ...state, consecutive: { discount, premium } };
+    return { ...state, lastTick, consecutive: { discount, premium } };
   }
 
   private decideAction(
@@ -159,9 +161,8 @@ export class StrategyRunner {
     priceRatio: number,
     reason: string
   ): Promise<void> {
-    const safetyBufferWei = ethers.parseEther(this.config.safetyBufferEth);
     const minTradeWei = ethers.parseEther(this.config.minTradeEth);
-    const spendable = ethBalance > safetyBufferWei ? ethBalance - safetyBufferWei : 0n;
+    const spendable = ethBalance;
 
     if (spendable < minTradeWei) {
       logEvent('stake_skipped', {

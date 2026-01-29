@@ -1,3 +1,14 @@
 :host {
   display: block;
 }
+
+.price-chart {
+  position: relative;
+  height: 280px;
+}
+
+.price-chart canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

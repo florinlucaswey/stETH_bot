@@ -15,6 +15,7 @@ export type StrategyState = {
     type: 'stake' | 'withdraw';
     timestamp: string;
   };
+  lastTick?: string;
   consecutive: {
     discount: number;
     premium: number;

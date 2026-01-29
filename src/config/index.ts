@@ -58,12 +58,12 @@ export function loadConfig(): BotConfig {
 
   const thresholdPct = parseNumberEnv('THRESHOLD_PCT', 0.4);
   const safetyBufferEth = process.env.SAFETY_BUFFER_ETH ?? '0.02';
-  const minTradeEth = process.env.MIN_TRADE_ETH ?? '0.05';
-  const minTradeSteth = process.env.MIN_TRADE_STETH ?? '0.05';
+  const minTradeEth = process.env.MIN_TRADE_ETH ?? '0.01';
+  const minTradeSteth = process.env.MIN_TRADE_STETH ?? '0.01';
   const loopSeconds = parseNumberEnv('LOOP_SECONDS', 60);
   const cooldownMinutes = parseNumberEnv('COOLDOWN_MINUTES', 60);
   const confirmationChecks = parseNumberEnv('CONFIRMATION_CHECKS', 3);
-  const minHoldHours = parseNumberEnv('MIN_HOLD_HOURS', 24);
+  const minHoldHours = parseNumberEnv('MIN_HOLD_HOURS', 1);
 
   const addresses = loadAddressConfig();
 

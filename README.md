@@ -67,12 +67,12 @@ Open `http://localhost:4200/lido`.
 
 - `THRESHOLD_PCT` (default `0.4`)
 - `SAFETY_BUFFER_ETH` (default `0.02`)
-- `MIN_TRADE_ETH` (default `0.05`)
-- `MIN_TRADE_STETH` (default `0.05`)
+- `MIN_TRADE_ETH` (default `0.01`)
+- `MIN_TRADE_STETH` (default `0.01`)
 - `LOOP_SECONDS` (default `60`)
 - `COOLDOWN_MINUTES` (default `60`)
 - `CONFIRMATION_CHECKS` (default `3`)
-- `MIN_HOLD_HOURS` (default `24`)
+- `MIN_HOLD_HOURS` (default `1`)
 
 ## Data files
 
