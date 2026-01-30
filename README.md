@@ -65,7 +65,8 @@ Open `http://localhost:4200/lido`.
 
 ## Config (env defaults)
 
-- `THRESHOLD_PCT` (default `0.4`)
+- `STAKE_PRICE_RATIO` (default `1.0`)
+- `WITHDRAW_PREMIUM_PCT` (default `0.3`)
 - `SAFETY_BUFFER_ETH` (default `0.005`)
 - `MIN_TRADE_ETH` (default `0.01`)
 - `MIN_TRADE_STETH` (default `0.01`)

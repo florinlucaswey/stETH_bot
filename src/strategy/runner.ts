@@ -70,7 +70,7 @@ export class StrategyRunner {
 
     const state = this.storage.loadState();
     const nowIso = new Date().toISOString();
-    const updatedState = this.updateConsecutive(state, discountPct, premiumPct, nowIso);
+    const updatedState = this.updateConsecutive(state, priceRatio, premiumPct, nowIso);
     this.storage.saveState(updatedState);
 
     logEvent('tick', {
@@ -83,7 +83,7 @@ export class StrategyRunner {
 
     await this.claimReadyWithdrawals(updatedState);
 
-    const decision = this.decideAction(updatedState, discountPct, premiumPct);
+    const decision = this.decideAction(updatedState, priceRatio, premiumPct);
     if (decision.action === 'none') {
       logEvent('decision', { action: decision.action, reason: decision.reason });
       return;
@@ -99,22 +99,24 @@ export class StrategyRunner {
 
   private updateConsecutive(
     state: ReturnType<StorageService['loadState']>,
-    discountPct: number,
+    priceRatio: number,
     premiumPct: number,
     lastTick: string
   ) {
-    const threshold = this.config.thresholdPct;
-    const discount = discountPct > threshold ? state.consecutive.discount + 1 : 0;
-    const premium = premiumPct > threshold ? state.consecutive.premium + 1 : 0;
+    const stakeSignal = priceRatio <= this.config.stakePriceRatio;
+    const premiumSignal = premiumPct > this.config.withdrawPremiumPct;
+    const discount = stakeSignal ? state.consecutive.discount + 1 : 0;
+    const premium = premiumSignal ? state.consecutive.premium + 1 : 0;
     return { ...state, lastTick, consecutive: { discount, premium } };
   }
 
   private decideAction(
     state: ReturnType<StorageService['loadState']>,
-    discountPct: number,
+    priceRatio: number,
     premiumPct: number
   ): ActionDecision {
-    const threshold = this.config.thresholdPct;
+    const stakeSignal = priceRatio <= this.config.stakePriceRatio;
+    const premiumSignal = premiumPct > this.config.withdrawPremiumPct;
     const now = Date.now();
     const lastAction = state.lastAction;
     const inCooldown =
@@ -124,22 +126,22 @@ export class StrategyRunner {
       return { action: 'none', reason: 'cooldown_active' };
     }
 
-    if (discountPct > threshold) {
-      if (lastAction?.type === 'withdraw') {
-        if (!this.canFlipAction(lastAction, state.consecutive.discount, now)) {
-          return { action: 'none', reason: 'stake_waiting_confirmation' };
-        }
-      }
-      return { action: 'stake', reason: 'discount_threshold' };
-    }
-
-    if (premiumPct > threshold) {
+    if (premiumSignal) {
       if (lastAction?.type === 'stake') {
         if (!this.canFlipAction(lastAction, state.consecutive.premium, now)) {
           return { action: 'none', reason: 'withdraw_waiting_confirmation' };
         }
       }
       return { action: 'withdraw', reason: 'premium_threshold' };
+    }
+
+    if (stakeSignal) {
+      if (lastAction?.type === 'withdraw') {
+        if (!this.canFlipAction(lastAction, state.consecutive.discount, now)) {
+          return { action: 'none', reason: 'stake_waiting_confirmation' };
+        }
+      }
+      return { action: 'stake', reason: 'parity_threshold' };
     }
 
     return { action: 'none', reason: 'no_signal' };

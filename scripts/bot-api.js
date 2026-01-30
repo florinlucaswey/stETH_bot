@@ -147,13 +147,17 @@ function normalizeAmount(value, label) {
 
 function getBotSettings() {
   const cooldownMinutes = Number(process.env.COOLDOWN_MINUTES ?? '60');
-  const minHoldHours = Number(process.env.MIN_HOLD_HOURS ?? '24');
+  const minHoldHours = Number(process.env.MIN_HOLD_HOURS ?? '1');
+  const stakePriceRatio = Number(process.env.STAKE_PRICE_RATIO ?? '1.0');
+  const withdrawPremiumPct = Number(process.env.WITHDRAW_PREMIUM_PCT ?? '0.3');
   return {
     cooldownMinutes: Number.isFinite(cooldownMinutes) ? cooldownMinutes : 60,
-    minHoldHours: Number.isFinite(minHoldHours) ? minHoldHours : 24,
+    minHoldHours: Number.isFinite(minHoldHours) ? minHoldHours : 1,
     minTradeEth: process.env.MIN_TRADE_ETH ?? '0.01',
     minTradeSteth: process.env.MIN_TRADE_STETH ?? '0.01',
-    loopSeconds: Number(process.env.LOOP_SECONDS ?? '60')
+    loopSeconds: Number(process.env.LOOP_SECONDS ?? '60'),
+    stakePriceRatio: Number.isFinite(stakePriceRatio) ? stakePriceRatio : 1.0,
+    withdrawPremiumPct: Number.isFinite(withdrawPremiumPct) ? withdrawPremiumPct : 0.3
   };
 }
 

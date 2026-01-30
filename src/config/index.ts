@@ -10,7 +10,8 @@ export type AddressConfig = {
 export type BotConfig = {
   rpcUrl: string;
   privateKey: string;
-  thresholdPct: number;
+  stakePriceRatio: number;
+  withdrawPremiumPct: number;
   safetyBufferEth: string;
   minTradeEth: string;
   minTradeSteth: string;
@@ -56,7 +57,8 @@ export function loadConfig(): BotConfig {
   const rpcUrl = requiredEnv('RPC_URL');
   const privateKey = requiredEnv('BOT_PRIVATE_KEY');
 
-  const thresholdPct = parseNumberEnv('THRESHOLD_PCT', 0.4);
+  const stakePriceRatio = parseNumberEnv('STAKE_PRICE_RATIO', 1.0);
+  const withdrawPremiumPct = parseNumberEnv('WITHDRAW_PREMIUM_PCT', 0.3);
   const safetyBufferEth = process.env.SAFETY_BUFFER_ETH ?? '0.005';
   const minTradeEth = process.env.MIN_TRADE_ETH ?? '0.01';
   const minTradeSteth = process.env.MIN_TRADE_STETH ?? '0.01';
@@ -70,7 +72,8 @@ export function loadConfig(): BotConfig {
   return {
     rpcUrl,
     privateKey,
-    thresholdPct,
+    stakePriceRatio,
+    withdrawPremiumPct,
     safetyBufferEth,
     minTradeEth,
     minTradeSteth,
