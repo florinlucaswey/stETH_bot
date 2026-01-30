@@ -66,7 +66,7 @@ Open `http://localhost:4200/lido`.
 ## Config (env defaults)
 
 - `THRESHOLD_PCT` (default `0.4`)
-- `SAFETY_BUFFER_ETH` (default `0.02`)
+- `SAFETY_BUFFER_ETH` (default `0.005`)
 - `MIN_TRADE_ETH` (default `0.01`)
 - `MIN_TRADE_STETH` (default `0.01`)
 - `LOOP_SECONDS` (default `60`)

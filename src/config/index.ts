@@ -57,7 +57,7 @@ export function loadConfig(): BotConfig {
   const privateKey = requiredEnv('BOT_PRIVATE_KEY');
 
   const thresholdPct = parseNumberEnv('THRESHOLD_PCT', 0.4);
-  const safetyBufferEth = process.env.SAFETY_BUFFER_ETH ?? '0.02';
+  const safetyBufferEth = process.env.SAFETY_BUFFER_ETH ?? '0.005';
   const minTradeEth = process.env.MIN_TRADE_ETH ?? '0.01';
   const minTradeSteth = process.env.MIN_TRADE_STETH ?? '0.01';
   const loopSeconds = parseNumberEnv('LOOP_SECONDS', 60);

@@ -162,7 +162,8 @@ export class StrategyRunner {
     reason: string
   ): Promise<void> {
     const minTradeWei = ethers.parseEther(this.config.minTradeEth);
-    const spendable = ethBalance;
+    const safetyBufferWei = ethers.parseEther(this.config.safetyBufferEth);
+    const spendable = ethBalance > safetyBufferWei ? ethBalance - safetyBufferWei : 0n;
 
     if (spendable < minTradeWei) {
       logEvent('stake_skipped', {
